@@ -1,179 +1,103 @@
 # SOL LINK A/B Pilot Prototype
 
-Mobile A/B test pilot for **Type A** vs **Type B** landing pages from your Figma design.
+Mobile A/B test pilot for **Type A** vs **Type B** landing pages.
 
-## Features
+## What you need for a real multi-phone pilot
 
-- **50:50 random** variant assignment (sticky per browser session)
-- **Section dwell time** via Intersection Observer
-- **CTA click** tracking (all buttons)
-- **Back button** tracking (header + browser back)
-- **Total session time** + max scroll depth
-- **Full-screen mobile** via PWA (`display: standalone`)
-- **Admin dashboard** at `/admin.html` with CSV export
-- **Supabase** backend (free tier) for multi-user data collection
-
-## Quick start (local)
-
-```bash
-cd sollinkAB
-python3 -m http.server 8080
-```
-
-Open on your phone (same Wi‑Fi):
-
-```
-http://YOUR_COMPUTER_IP:8080
-```
-
-Force a variant for testing:
-
-```
-http://localhost:8080/?variant=A
-http://localhost:8080/?variant=B
-```
-
-## Deploy with a **private** GitHub repo (recommended for you)
-
-Your coworkers only need the **live URL** — they never see the GitHub repo. Keep the repo private and deploy with one of these (all free):
-
-### Option A: Vercel (easiest)
-
-1. Push this folder to a **private** GitHub repo
-2. Go to [vercel.com](https://vercel.com) → **Add New Project**
-3. Import your private repo (grant Vercel access to that repo only)
-4. Leave **Framework Preset**: Other, **Root Directory**: `.`, **Build Command**: empty
-5. Deploy → you get a URL like `https://sollink-ab-pilot.vercel.app`
-6. Share that URL with coworkers
-
-Redeploys automatically on every `git push`.
-
-### Option B: Cloudflare Pages
-
-1. [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages** → **Create**
-2. Connect private GitHub repo
-3. Build command: *(none)* · Output directory: `/`
-4. Deploy and share the `*.pages.dev` URL
-
-### Option C: Netlify
-
-1. [app.netlify.com](https://app.netlify.com) → **Add new site** → **Import from Git**
-2. Connect private repo (uses `netlify.toml` in this project)
-3. Deploy and share the `*.netlify.app` URL
-
-### What stays private vs shared
-
-| | Coworkers with link | Random public |
-|--|---------------------|---------------|
-| GitHub repo (source code) | **Hidden** | **Hidden** |
-| Live prototype URL | Can open | Can open if they guess URL* |
-| Admin dashboard | Can open (needs password) | Same |
-
-\* URLs are unlisted, not secret. For stricter access, enable **password protection** on Vercel/Netlify (paid) or share only on internal channels.
+1. **Live URL** (Vercel) — coworkers open the same link on their phones  
+2. **Supabase** (free) — all sessions go to one shared database  
+3. **Admin** — compare Type A vs B, archive old rounds, reset for a new test
 
 ---
 
-## Deploy to GitHub Pages (public repo only)
-
-GitHub **Free** requires a **public** repo for Pages. Skip this if the repo must stay private.
-
-1. Create a new GitHub repo (e.g. `sollink-ab-pilot`)
-2. Push this folder:
+## 1. Deploy live (Vercel)
 
 ```bash
-git init
+cd sollinkAB
 git add .
-git commit -m "Add SOL LINK A/B pilot prototype"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/sollink-ab-pilot.git
-git push -u origin main
+git commit -m "Prepare live A/B pilot with archive reset"
+git push
 ```
 
-3. In GitHub → **Settings → Pages → Source**: deploy from `main` / root
-4. Your live URLs:
+1. [vercel.com](https://vercel.com) → **Add New Project** → import your GitHub repo  
+2. **Framework**: Other · **Root**: `.` · **Build command**: `npm run build` · **Output**: `.`  
+3. Deploy → share URL, e.g. `https://sollink-ab-pilot.vercel.app`
 
-```
-https://YOUR_USERNAME.github.io/sollink-ab-pilot/
-https://YOUR_USERNAME.github.io/sollink-ab-pilot/admin.html
-```
+**On iPhone/Android:** open in Safari/Chrome → **Add to Home Screen** for full-screen.
 
-Share the first link with testers.
+---
 
-## Set up data collection (Supabase — recommended)
+## 2. Shared data (Supabase)
 
-Without Supabase, sessions are stored **locally on each device** only. For a real pilot, set up Supabase (free):
+1. Create a project at [supabase.com](https://supabase.com)  
+2. **SQL Editor** → paste and run **`supabase/schema.sql`** (includes archive + reset function)  
+3. **Settings → API** → copy **Project URL** and **anon public** key  
 
-1. Create a project at [supabase.com](https://supabase.com)
-2. Run `supabase/schema.sql` in **SQL Editor**
-3. Copy **Project URL** and **anon public key** from Settings → API
-4. Edit `js/config.js`:
+### Local dev
+
+Edit `js/config.js`:
 
 ```js
 window.SOLLINK_CONFIG = {
   supabaseUrl: 'https://xxxxx.supabase.co',
   supabaseAnonKey: 'eyJhbG...',
-  adminPassword: 'your-secure-password',
 };
 ```
 
-5. Open `admin.html`, log in, click **Refresh**
+### Vercel (recommended for production)
 
-## Full-screen on iPhone / Android
+**Project → Settings → Environment Variables**
 
-1. Open the prototype URL in **Safari** (iOS) or **Chrome** (Android)
-2. **Add to Home Screen**
-3. Launch from the home screen icon → runs without browser chrome
+| Name | Value |
+|------|--------|
+| `SUPABASE_URL` | `https://xxxxx.supabase.co` |
+| `SUPABASE_ANON_KEY` | your anon key |
 
-## Tracked sections
+Redeploy. Build writes `js/config.js` from these env vars.
 
-| Section ID | Content |
-|-----------|---------|
-| `topBanner` | Hero banner |
-| `productDesc` | Product intro (A: image / B: card layout) |
-| `benefit1` | Tesla event section |
-| `benefit2` | Million-won event section |
-| `commission` | Fee benefit section |
-| `contentContainer` | Bottom nav area |
-| `disclaimer` | 알아두세요 |
+Without Supabase, each phone only stores data locally — **not suitable for a team pilot**.
 
-## Tracked CTAs
+---
 
-- SOL LINK 개설하기 / SOL LINK 자세히 보기
-- 투자쿠폰 받고 테슬라 응모하기
-- 테슬라 당첨 결과 보기
-- 최대 100만원 도전하기
-- 수수료 혜택 신청하기
+## 3. Admin dashboard
 
-## Admin dashboard
+**URL:** `https://YOUR-DEPLOY-URL/admin.html`
 
-URL: `/admin.html`
+| Action | What it does |
+|--------|----------------|
+| **Refresh** | Reload live data + archive list |
+| **Archive & reset live data** | Saves current sessions to archive, clears live table for a new round |
+| **Viewing** dropdown | Switch between **Live data** and past **archives** |
+| **Export CSV** | Download current view (live or archive) |
 
-Default password: `sollink-pilot-2026` (change in `js/config.js`)
+---
 
-Shows:
-- Session count by variant
-- Average time on page
-- Back button rate
-- CTA click counts
-- Per-section average dwell time
-- CSV export
+## Quick local test
+
+```bash
+python3 -m http.server 8080
+# http://localhost:8080/?variant=B
+# http://localhost:8080/admin.html
+```
+
+---
+
+## Tracked metrics
+
+- **CTR** — % of sessions with CTA clicks (overall + per button)  
+- **Viewing duration** — total time on page + per-section dwell  
+- Variant assignment: 50/50 sticky per session (`?variant=A|B` for QA)
+
+---
 
 ## File structure
 
 ```
-index.html          # Prototype entry
-admin.html          # Analytics dashboard
-js/analytics.js     # Tracking engine
-js/app.js           # Renders Type A / B
-js/config.js        # Supabase + admin password
-assets/a/           # Type A images
-assets/b/           # Type B images
-manifest.json       # PWA config
-supabase/schema.sql # Database setup
+index.html              Prototype
+admin.html              A/B comparison dashboard
+js/analytics.js         Tracking + archive/reset
+js/admin.js             Comparison tables
+js/config.js            Supabase keys (or from Vercel env)
+supabase/schema.sql     DB + archive_and_reset_sessions()
+vercel.json             Deploy config
 ```
-
-## Notes
-
-- Figma asset URLs expire after ~7 days — images are bundled locally in `assets/`
-- For production, restrict Supabase RLS policies (current setup is pilot-friendly)
-- `?variant=A|B` overrides random assignment for QA

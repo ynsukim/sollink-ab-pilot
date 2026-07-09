@@ -1,6 +1,7 @@
 (function () {
   const STORAGE_KEY = 'sollink_ab_variant';
   const QUEUE_KEY = 'sollink_ab_event_queue';
+  const ARCHIVES_KEY = 'sollink_ab_archives';
 
   function uuid() {
     return crypto.randomUUID();
@@ -24,6 +25,96 @@
     const variant = Math.random() < 0.5 ? 'A' : 'B';
     sessionStorage.setItem(STORAGE_KEY, variant);
     return variant;
+  }
+
+  function getArchivesLocal() {
+    return JSON.parse(localStorage.getItem(ARCHIVES_KEY) || '[]');
+  }
+
+  function saveArchivesLocal(archives) {
+    localStorage.setItem(ARCHIVES_KEY, JSON.stringify(archives));
+  }
+
+  function hasSupabaseConfig() {
+    const { supabaseUrl, supabaseAnonKey } = getConfig();
+    return Boolean(supabaseUrl && supabaseAnonKey);
+  }
+
+  async function fetchArchivesRemote() {
+    const { supabaseUrl, supabaseAnonKey } = getConfig();
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/session_archives?select=*&order=archived_at.desc`,
+      {
+        headers: {
+          apikey: supabaseAnonKey,
+          Authorization: `Bearer ${supabaseAnonKey}`,
+        },
+      }
+    );
+    if (!res.ok) throw new Error('Failed to fetch archives');
+    return res.json();
+  }
+
+  async function archiveAndResetRemote(label) {
+    const { supabaseUrl, supabaseAnonKey } = getConfig();
+    const res = await fetch(`${supabaseUrl}/rest/v1/rpc/archive_and_reset_sessions`, {
+      method: 'POST',
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${supabaseAnonKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ archive_label: label || null }),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || 'Archive and reset failed');
+    }
+    return res.json();
+  }
+
+  function archiveAndResetLocal(label) {
+    const queue = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
+    const archives = getArchivesLocal();
+    let archivedCount = 0;
+
+    if (queue.length) {
+      archives.unshift({
+        id: `local-${Date.now()}`,
+        archived_at: new Date().toISOString(),
+        label: label || `Archive ${new Date().toLocaleString()}`,
+        session_count: queue.length,
+        sessions: queue,
+      });
+      archivedCount = queue.length;
+      saveArchivesLocal(archives);
+    }
+
+    localStorage.removeItem(QUEUE_KEY);
+    return { archived_count: archivedCount, label, archived_at: new Date().toISOString() };
+  }
+
+  async function flushQueueImpl() {
+    const queue = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
+    if (!queue.length) return 0;
+
+    let sent = 0;
+    for (const payload of queue) {
+      const result = await sendToSupabase(payload);
+      if (result.ok) sent += 1;
+    }
+    if (sent === queue.length) localStorage.removeItem(QUEUE_KEY);
+    return sent;
+  }
+
+  async function archiveAndReset(label) {
+    if (hasSupabaseConfig()) {
+      await flushQueueImpl();
+      const result = await archiveAndResetRemote(label);
+      localStorage.removeItem(QUEUE_KEY);
+      return result;
+    }
+    return archiveAndResetLocal(label);
   }
 
   function queueEvent(payload) {
@@ -248,6 +339,10 @@
     SessionTracker,
     getVariant,
     setVariant,
+    hasSupabaseConfig,
+    getArchivesLocal,
+    fetchArchivesRemote,
+    archiveAndReset,
     getQueuedSessions() {
       return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
     },
@@ -255,16 +350,7 @@
       localStorage.removeItem(QUEUE_KEY);
     },
     async flushQueue() {
-      const queue = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
-      if (!queue.length) return 0;
-
-      let sent = 0;
-      for (const payload of queue) {
-        const result = await sendToSupabase(payload);
-        if (result.ok) sent += 1;
-      }
-      if (sent === queue.length) localStorage.removeItem(QUEUE_KEY);
-      return sent;
+      return flushQueueImpl();
     },
   };
 })();

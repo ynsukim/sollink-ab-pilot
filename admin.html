@@ -13,7 +13,13 @@
     .admin-card .subtitle { margin: 0 0 16px; color: #667085; font-size: 14px; }
     .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; align-items: center; }
     .toolbar button { padding: 8px 12px; border-radius: 8px; border: none; background: #2571fe; color: #fff; cursor: pointer; font-size: 14px; }
-    .toolbar button.secondary { background: #fff; color: #344054; border: 1px solid #d0d5dd; }
+    .toolbar button.danger { background: #b42318; }
+    .data-source { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 16px; }
+    .data-source label { font-size: 14px; color: #344054; font-weight: 600; }
+    .data-source select { padding: 8px 12px; border-radius: 8px; border: 1px solid #d0d5dd; min-width: 260px; font-size: 14px; }
+    .status-banner { border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-bottom: 16px; }
+    .status-banner.ok { background: #ecfdf3; color: #027a48; border: 1px solid #abefc6; }
+    .status-banner.warn { background: #fffaeb; color: #b54708; border: 1px solid #fedf89; }
     .summary-pills { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
     .pill { background: #f0f4fa; border-radius: 999px; padding: 8px 14px; font-size: 13px; }
     .pill strong { font-size: 16px; margin-left: 6px; }
@@ -51,10 +57,20 @@
     <h1>SOL LINK A/B Pilot</h1>
     <p><a href="index.html">← Back to prototype</a></p>
 
+    <div id="status-banner" class="status-banner warn"></div>
+
     <div class="toolbar">
       <button type="button" id="refresh-btn">Refresh</button>
+      <button type="button" id="reset-btn" class="danger">Archive &amp; reset live data</button>
       <button type="button" id="flush-queue-btn" class="secondary">Upload queued sessions</button>
       <button type="button" id="export-csv-btn" class="secondary">Export CSV</button>
+    </div>
+
+    <div class="data-source">
+      <label for="data-source-select">Viewing</label>
+      <select id="data-source-select">
+        <option value="live">Live data (current)</option>
+      </select>
     </div>
 
     <div class="summary-pills" id="summary-pills"></div>

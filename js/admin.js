@@ -1,5 +1,6 @@
 (function () {
   let sessions = [];
+  let archives = [];
 
   const SECTION_LABELS = {
     topBanner: 'Top banner',
@@ -249,17 +250,125 @@
       : '<tr><td colspan="4">No sessions recorded.</td></tr>';
   }
 
+  async function fetchArchives() {
+    if (window.SollinkAnalytics.hasSupabaseConfig()) {
+      try {
+        return await window.SollinkAnalytics.fetchArchivesRemote();
+      } catch {
+        return [];
+      }
+    }
+    return window.SollinkAnalytics.getArchivesLocal();
+  }
+
+  function normalizeArchiveSessions(archive) {
+    const raw = parseField(archive.sessions, []);
+    return raw.map((s) => ({
+      ...s,
+      variant: s.variant,
+      total_time_ms: s.total_time_ms,
+      section_dwell: s.section_dwell,
+      cta_clicks: s.cta_clicks,
+      started_at: s.started_at,
+      created_at: s.created_at,
+    }));
+  }
+
+  function renderStatusBanner() {
+    const el = document.getElementById('status-banner');
+    if (window.SollinkAnalytics.hasSupabaseConfig()) {
+      el.className = 'status-banner ok';
+      el.textContent =
+        'Live mode: Supabase connected. All phones share the same data. Use Archive & reset to start a new test round.';
+      return;
+    }
+    el.className = 'status-banner warn';
+    el.textContent =
+      'Local-only mode: data stays on this browser until Supabase is configured. Add SUPABASE_URL and SUPABASE_ANON_KEY on Vercel, then redeploy.';
+  }
+
+  function renderArchiveOptions() {
+    const select = document.getElementById('data-source-select');
+    const current = select.value;
+    select.innerHTML =
+      '<option value="live">Live data (current)</option>' +
+      archives
+        .map((archive) => {
+          const id = String(archive.id);
+          const when = (archive.archived_at || '').slice(0, 16).replace('T', ' ');
+          const label = archive.label || `Archive ${when}`;
+          return `<option value="archive:${id}">${label} (${archive.session_count || 0} sessions)</option>`;
+        })
+        .join('');
+
+    if ([...select.options].some((opt) => opt.value === current)) {
+      select.value = current;
+    }
+  }
+
+  function getSelectedSessions() {
+    const value = document.getElementById('data-source-select').value;
+    if (value === 'live') return sessions;
+
+    const archiveId = value.replace('archive:', '');
+    const archive = archives.find((a) => String(a.id) === archiveId);
+    return archive ? normalizeArchiveSessions(archive) : [];
+  }
+
+  function renderDashboard() {
+    const data = getSelectedSessions();
+    renderComparison(data);
+
+    const subtitle = document.querySelector('.admin-card .subtitle');
+    if (document.getElementById('data-source-select').value === 'live') {
+      subtitle.textContent =
+        'CTR and average viewing time — difference column shows Type B minus Type A.';
+    } else {
+      const archive = archives.find(
+        (a) => `archive:${a.id}` === document.getElementById('data-source-select').value
+      );
+      subtitle.textContent = archive
+        ? `Archived snapshot: ${archive.label} — ${(archive.archived_at || '').slice(0, 19).replace('T', ' ')} UTC`
+        : 'Archived snapshot';
+    }
+
+    renderRawLogs(data);
+  }
+
   async function loadData() {
+    renderStatusBanner();
     try {
       sessions = await fetchSessions();
     } catch {
       sessions = window.SollinkAnalytics.getQueuedSessions();
     }
-    renderComparison(sessions);
-    renderRawLogs(sessions);
+    archives = await fetchArchives();
+    renderArchiveOptions();
+    renderDashboard();
   }
 
   document.getElementById('refresh-btn').addEventListener('click', loadData);
+
+  document.getElementById('data-source-select').addEventListener('change', renderDashboard);
+
+  document.getElementById('reset-btn').addEventListener('click', async () => {
+    const liveCount = sessions.length;
+    const label = prompt(
+      `Archive ${liveCount} live session(s) and reset?\n\nOptional label for this archive:`,
+      `Round ${new Date().toLocaleDateString()}`
+    );
+    if (label == null) return;
+
+    try {
+      const result = await window.SollinkAnalytics.archiveAndReset(label.trim() || null);
+      const count = result.archived_count ?? 0;
+      alert(`Archived ${count} session(s) and reset live data.`);
+      document.getElementById('data-source-select').value = 'live';
+      await loadData();
+    } catch (err) {
+      alert(`Reset failed: ${err.message || err}`);
+    }
+  });
 
   document.getElementById('flush-queue-btn').addEventListener('click', async () => {
     const sent = await window.SollinkAnalytics.flushQueue();
@@ -268,6 +377,7 @@
   });
 
   document.getElementById('export-csv-btn').addEventListener('click', () => {
+    const data = getSelectedSessions();
     const headers = [
       'started_at',
       'variant',
@@ -277,7 +387,7 @@
       'cta_clicks',
       'section_dwell',
     ];
-    const rows = sessions.map((s) => headers.map((h) => JSON.stringify(s[h] ?? '')).join(','));
+    const rows = data.map((s) => headers.map((h) => JSON.stringify(s[h] ?? '')).join(','));
     const csv = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const a = document.createElement('a');
