@@ -1,4 +1,42 @@
 (function () {
+  const EVENT_LIST = [
+    {
+      id: 'sollink',
+      title: 'SOL LINK 신규 고객 이벤트',
+      subtitle: '테슬라·100만원 혜택',
+      period: '2026.01.01 ~ 2026.12.31',
+      badge: 'NEW',
+      featured: true,
+    },
+    {
+      id: 'promo-fee',
+      title: '온라인 수수료 우대 이벤트',
+      subtitle: 'SUPERSOL 이용 고객',
+      period: '2026.03.01 ~ 2026.06.30',
+    },
+    {
+      id: 'slite',
+      title: '나라사랑 S-Lite 개설 혜택',
+      subtitle: '신규·기존 고객',
+      period: '2026.04.01 ~ 2026.09.30',
+    },
+    {
+      id: 'deposit',
+      title: 'SUPERSOL 첫 입금 이벤트',
+      subtitle: '최대 5만원 쿠폰',
+      period: '2026.02.01 ~ 2026.08.31',
+    },
+    {
+      id: 'friend',
+      title: '친구 초대 리워드',
+      subtitle: '추천인·피추천인 혜택',
+      period: '상시',
+    },
+  ];
+
+  let tracker = null;
+  let currentView = 'list';
+
   const SECTIONS = {
     A: [
       { id: 'topBanner', img: 'assets/a/topBanner.png', alt: 'Top banner' },
@@ -177,6 +215,129 @@
   let productCardBubbleAppearObserver = null;
   let productCardScrollHandler = null;
 
+  function teardownProductCardAnimations() {
+    productCardShakeObserver?.disconnect();
+    productCardShakeObserver = null;
+    productCardBubbleObserver?.disconnect();
+    productCardBubbleObserver = null;
+    productCardBubbleAppearObserver?.disconnect();
+    productCardBubbleAppearObserver = null;
+
+    if (productCardScrollHandler) {
+      window.removeEventListener('scroll', productCardScrollHandler);
+      productCardScrollHandler = null;
+    }
+  }
+
+  function renderEventList() {
+    const main = document.getElementById('main-content');
+    main.innerHTML = `
+      <section class="event-list-screen" aria-label="이벤트 목록">
+        <div class="event-list-header">
+          <h2 class="event-list-heading">진행 중인 이벤트</h2>
+          <p class="event-list-subheading">관심 있는 이벤트를 선택하세요</p>
+        </div>
+        <ul class="event-list">
+          ${EVENT_LIST.map(
+            (event) => `
+            <li>
+              <button type="button" class="event-list-item${event.featured ? ' featured' : ''}" data-open-event="${event.id}">
+                ${event.badge ? `<span class="event-list-badge">${event.badge}</span>` : ''}
+                <span class="event-list-title">${event.title}</span>
+                <span class="event-list-desc">${event.subtitle}</span>
+                <span class="event-list-period">${event.period}</span>
+              </button>
+            </li>`
+          ).join('')}
+        </ul>
+      </section>`;
+
+    main.querySelectorAll('[data-open-event]').forEach((btn) => {
+      btn.addEventListener('click', openEventDetail);
+    });
+  }
+
+  function updateHeader(view) {
+    const backBtn = document.getElementById('back-btn');
+    const backIcon = backBtn?.querySelector('.top-nav-back-icon');
+    const title = backBtn?.querySelector('.top-nav-title');
+
+    if (!backBtn) return;
+
+    if (view === 'list') {
+      title.textContent = '이벤트';
+      backIcon?.classList.add('hidden');
+      backBtn.setAttribute('aria-hidden', 'true');
+      backBtn.tabIndex = -1;
+    } else {
+      title.textContent = '이벤트';
+      backIcon?.classList.remove('hidden');
+      backBtn.removeAttribute('aria-hidden');
+      backBtn.tabIndex = 0;
+    }
+  }
+
+  function showList() {
+    currentView = 'list';
+    document.body.dataset.view = 'list';
+    delete document.body.dataset.variant;
+    teardownProductCardAnimations();
+    updateHeader('list');
+    renderEventList();
+  }
+
+  function leaveDetail(source = 'browser_back') {
+    if (tracker) {
+      tracker.markBackPressed(source);
+      tracker.flush(true);
+      tracker = null;
+    }
+    teardownProductCardAnimations();
+    showList();
+  }
+
+  function enterDetail() {
+    currentView = 'detail';
+    document.body.dataset.view = 'detail';
+    updateHeader('detail');
+
+    tracker = new window.SollinkAnalytics.SessionTracker();
+    document.body.dataset.variant = tracker.variant;
+    renderMain(tracker.variant, tracker);
+    tracker.init();
+    window.scrollTo(0, 0);
+  }
+
+  function openEventDetail() {
+    if (currentView === 'detail') return;
+    history.pushState({ view: 'detail' }, '');
+    enterDetail();
+  }
+
+  function setupNavigation() {
+    history.replaceState({ view: 'list' }, '');
+
+    window.addEventListener('popstate', (event) => {
+      const view = event.state?.view || 'list';
+      if (view === 'list' && currentView === 'detail') {
+        const source = sessionStorage.getItem('sollink_back_source') || 'browser_back';
+        sessionStorage.removeItem('sollink_back_source');
+        leaveDetail(source);
+        return;
+      }
+
+      if (view === 'detail' && currentView === 'list') {
+        enterDetail();
+      }
+    });
+
+    document.getElementById('back-btn')?.addEventListener('click', () => {
+      if (currentView !== 'detail') return;
+      sessionStorage.setItem('sollink_back_source', 'header_button');
+      history.back();
+    });
+  }
+
   function setupProductCardShake(variant) {
     productCardShakeObserver?.disconnect();
     productCardShakeObserver = null;
@@ -315,14 +476,15 @@
     setupProductCardShake(variant);
   }
 
-  function switchVariant(tracker) {
+  function switchVariant() {
+    if (!tracker) return;
     const other = tracker.variant === 'A' ? 'B' : 'A';
     tracker.trackEvent('variant_switch', { from: tracker.variant, to: other });
     window.SollinkAnalytics.setVariant(other);
 
     const url = new URL(window.location.href);
     url.searchParams.set('variant', other);
-    history.replaceState({}, '', url);
+    history.replaceState({ view: 'detail' }, '', url);
 
     tracker.variant = other;
     document.body.dataset.variant = other;
@@ -330,31 +492,26 @@
     window.scrollTo(0, 0);
   }
 
-  function setupHeaderActions(tracker) {
+  function setupHeaderActions() {
     document.getElementById('btn-version-info')?.addEventListener('click', () => {
+      if (!tracker) return;
       alert(`현재 버전: Type ${tracker.variant}`);
     });
 
     document.getElementById('btn-switch-version')?.addEventListener('click', () => {
-      switchVariant(tracker);
+      switchVariant();
     });
   }
 
   function init() {
-    const tracker = new window.SollinkAnalytics.SessionTracker();
-    const variant = tracker.variant;
+    showList();
+    setupNavigation();
+    setupHeaderActions();
 
-    document.body.dataset.variant = variant;
-    renderMain(variant, tracker);
-    setupHeaderActions(tracker);
-    tracker.init();
-
-    const endBtn = document.getElementById('end-session');
-    if (endBtn) {
-      endBtn.addEventListener('click', async () => {
-        await tracker.flush(false);
-        alert('Session saved. You can close this page.');
-      });
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('variant') === 'A' || url.searchParams.get('variant') === 'B') {
+      history.pushState({ view: 'detail' }, '');
+      enterDetail();
     }
   }
 

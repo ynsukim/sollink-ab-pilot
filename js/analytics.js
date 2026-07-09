@@ -166,11 +166,17 @@
     init() {
       this.setupSectionObserver();
       this.setupScrollTracking();
-      this.setupBackTracking();
       this.setupVisibilityFlush();
 
       window.addEventListener('pagehide', () => this.flush(true));
       window.addEventListener('beforeunload', () => this.flush(true));
+    }
+
+    markBackPressed(source = 'header_button') {
+      if (this.backPressed) return;
+      this.backPressed = true;
+      this.backPressedAt = new Date().toISOString();
+      this.trackEvent('back_press', { at: this.backPressedAt, source });
     }
 
     setupSectionObserver() {
@@ -206,31 +212,6 @@
 
       window.addEventListener('scroll', updateDepth, { passive: true });
       updateDepth();
-    }
-
-    setupBackTracking() {
-      history.pushState({ sollink: true }, '');
-
-      window.addEventListener('popstate', () => {
-        if (!this.backPressed) {
-          this.backPressed = true;
-          this.backPressedAt = new Date().toISOString();
-          this.trackEvent('back_press', { at: this.backPressedAt });
-        }
-        history.pushState({ sollink: true }, '');
-      });
-
-      const backBtn = document.getElementById('back-btn');
-      if (backBtn) {
-        backBtn.addEventListener('click', () => {
-          if (!this.backPressed) {
-            this.backPressed = true;
-            this.backPressedAt = new Date().toISOString();
-            this.trackEvent('back_press', { at: this.backPressedAt, source: 'header_button' });
-          }
-          history.back();
-        });
-      }
     }
 
     setupVisibilityFlush() {
