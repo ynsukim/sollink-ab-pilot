@@ -116,7 +116,7 @@
               ${img(section.imgBody, 'Product body')}
             </div>
             <div class="cta-block">
-              ${section.badgeImage ? `<img src="${section.badgeImage}" alt="" class="cta-bubble">` : ''}
+              ${section.badgeImage ? `<div class="cta-bubble-wrap"><img src="${section.badgeImage}" alt="" class="cta-bubble"></div>` : ''}
               ${renderCtas(section.ctas)}
             </div>
           </div>
@@ -172,11 +172,147 @@
     });
   }
 
+  let productCardShakeObserver = null;
+  let productCardBubbleObserver = null;
+  let productCardBubbleAppearObserver = null;
+  let productCardScrollHandler = null;
+
+  function setupProductCardShake(variant) {
+    productCardShakeObserver?.disconnect();
+    productCardShakeObserver = null;
+    productCardBubbleObserver?.disconnect();
+    productCardBubbleObserver = null;
+    productCardBubbleAppearObserver?.disconnect();
+    productCardBubbleAppearObserver = null;
+
+    if (productCardScrollHandler) {
+      window.removeEventListener('scroll', productCardScrollHandler);
+      productCardScrollHandler = null;
+    }
+
+    if (variant !== 'B') return;
+
+    const card = document.querySelector('[data-section="productDesc"] .product-card');
+    if (!card) return;
+
+    const bubble = card.querySelector('.cta-bubble-wrap');
+    let cardAboveThreshold = false;
+    let bubbleInCenter = false;
+    let bubbleWasInView = false;
+    let lastScrollY = window.scrollY;
+    let scrollingDown = true;
+
+    productCardScrollHandler = () => {
+      scrollingDown = window.scrollY >= lastScrollY;
+      lastScrollY = window.scrollY;
+    };
+    window.addEventListener('scroll', productCardScrollHandler, { passive: true });
+
+    const runBubbleAppear = () => {
+      if (!bubble) return;
+
+      bubble.classList.remove('appear-attention');
+      void bubble.offsetWidth;
+      bubble.classList.add('appear-attention');
+    };
+
+    const runBubbleBounce = () => {
+      if (!bubble) return;
+
+      bubble.classList.remove('bounce-attention');
+      void bubble.offsetWidth;
+      bubble.classList.add('bounce-attention');
+      bubble.addEventListener(
+        'animationend',
+        () => bubble.classList.remove('bounce-attention'),
+        { once: true }
+      );
+    };
+
+    const runShake = () => {
+      card.classList.remove('shake-attention');
+      void card.offsetWidth;
+      card.classList.add('shake-attention');
+      card.addEventListener(
+        'animationend',
+        () => card.classList.remove('shake-attention'),
+        { once: true }
+      );
+    };
+
+    productCardShakeObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.target !== card) return;
+
+          const nowAbove = entry.isIntersecting && entry.intersectionRatio >= 0.6;
+
+          if (nowAbove && !cardAboveThreshold && scrollingDown) {
+            runShake();
+          }
+
+          cardAboveThreshold = nowAbove;
+        });
+      },
+      { threshold: [0, 0.25, 0.45, 0.6, 0.75, 1] }
+    );
+
+    productCardShakeObserver.observe(card);
+
+    if (!bubble) return;
+
+    productCardBubbleAppearObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.target !== bubble) return;
+
+          const inView = entry.isIntersecting && entry.intersectionRatio >= 0.15;
+
+          if (inView && !bubbleWasInView) {
+            runBubbleAppear();
+          }
+
+          if (!entry.isIntersecting) {
+            bubble.classList.remove('appear-attention');
+          }
+
+          bubbleWasInView = inView;
+        });
+      },
+      { threshold: [0, 0.15, 0.3, 0.5] }
+    );
+
+    productCardBubbleAppearObserver.observe(bubble);
+
+    productCardBubbleObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.target !== bubble) return;
+
+          const inCenter = entry.isIntersecting;
+
+          if (inCenter && !bubbleInCenter) {
+            runBubbleBounce();
+          }
+
+          bubbleInCenter = inCenter;
+        });
+      },
+      {
+        threshold: 0,
+        rootMargin: '-40% 0px -40% 0px',
+      }
+    );
+
+    productCardBubbleObserver.observe(bubble);
+  }
+
   function renderMain(variant, tracker) {
     const main = document.getElementById('main-content');
     main.innerHTML = SECTIONS[variant].map(renderSection).join('');
     bindCtas(main, tracker);
     tracker.resetSections();
+    setupProductCardShake(variant);
   }
 
   function switchVariant(tracker) {

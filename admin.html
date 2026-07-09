@@ -6,62 +6,82 @@
   <title>SOL LINK AB Test — Admin</title>
   <link rel="stylesheet" href="css/styles.css">
   <style>
-    body { background: #f5f7fb; }
-    .admin-wrap { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
+    body { background: #f5f7fb; color: #101828; }
+    .admin-wrap { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
     .admin-card { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
-    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
-    .stat { background: #f0f4fa; border-radius: 8px; padding: 12px; }
-    .stat strong { display: block; font-size: 24px; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th, td { border-bottom: 1px solid #e5e7eb; padding: 8px; text-align: left; vertical-align: top; }
-    th { background: #f9fafb; position: sticky; top: 0; }
-    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-    .toolbar button, .toolbar input { padding: 8px 12px; border-radius: 8px; border: 1px solid #d0d5dd; }
-    .toolbar button { background: #2571fe; color: #fff; border: none; cursor: pointer; }
-    pre { white-space: pre-wrap; font-size: 11px; max-height: 120px; overflow: auto; background: #f9fafb; padding: 8px; border-radius: 6px; }
+    .admin-card h2 { margin: 0 0 4px; font-size: 20px; }
+    .admin-card .subtitle { margin: 0 0 16px; color: #667085; font-size: 14px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; align-items: center; }
+    .toolbar button { padding: 8px 12px; border-radius: 8px; border: none; background: #2571fe; color: #fff; cursor: pointer; font-size: 14px; }
+    .toolbar button.secondary { background: #fff; color: #344054; border: 1px solid #d0d5dd; }
+    .summary-pills { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+    .pill { background: #f0f4fa; border-radius: 999px; padding: 8px 14px; font-size: 13px; }
+    .pill strong { font-size: 16px; margin-left: 6px; }
+    .compare-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .compare-table th,
+    .compare-table td { border-bottom: 1px solid #e5e7eb; padding: 10px 12px; text-align: right; vertical-align: middle; }
+    .compare-table th:first-child,
+    .compare-table td:first-child { text-align: left; }
+    .compare-table thead th { background: #f9fafb; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: #667085; }
+    .compare-table tbody tr.section-head td {
+      background: #f9fafb;
+      font-weight: 700;
+      color: #344054;
+      padding-top: 14px;
+      border-bottom: 1px solid #eaecf0;
+    }
+    .compare-table .metric-label { color: #101828; }
+    .compare-table .metric-hint { display: block; font-size: 12px; color: #98a2b3; font-weight: 400; margin-top: 2px; }
+    .delta-good { color: #027a48; font-weight: 600; }
+    .delta-bad { color: #b42318; font-weight: 600; }
+    .delta-neutral { color: #667085; }
+    .winner { background: #ecfdf3; }
+    .empty-state { color: #667085; font-size: 14px; padding: 12px 0; }
+    details.raw-logs { margin-top: 8px; }
+    details.raw-logs summary { cursor: pointer; font-weight: 600; color: #344054; padding: 8px 0; }
+    .raw-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+    .raw-table th,
+    .raw-table td { border-bottom: 1px solid #e5e7eb; padding: 6px 8px; text-align: left; vertical-align: top; }
+    .raw-table th { background: #f9fafb; }
+    a { color: #2571fe; }
   </style>
 </head>
 <body>
   <div id="dashboard-view" class="admin-wrap">
-    <h1>SOL LINK A/B Pilot Dashboard</h1>
+    <h1>SOL LINK A/B Pilot</h1>
     <p><a href="index.html">← Back to prototype</a></p>
 
     <div class="toolbar">
       <button type="button" id="refresh-btn">Refresh</button>
-      <button type="button" id="flush-queue-btn">Upload queued (local) sessions</button>
-      <button type="button" id="export-csv-btn">Export CSV</button>
-      <select id="variant-filter">
-        <option value="">All variants</option>
-        <option value="A">Type A</option>
-        <option value="B">Type B</option>
-      </select>
+      <button type="button" id="flush-queue-btn" class="secondary">Upload queued sessions</button>
+      <button type="button" id="export-csv-btn" class="secondary">Export CSV</button>
     </div>
 
-    <div class="admin-card stats" id="stats"></div>
+    <div class="summary-pills" id="summary-pills"></div>
 
     <div class="admin-card">
-      <h3>Sessions</h3>
-      <div style="overflow-x:auto;">
-        <table>
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Variant</th>
-              <th>Total (s)</th>
-              <th>Scroll</th>
-              <th>Back</th>
-              <th>CTAs</th>
-              <th>Section dwell (s)</th>
-            </tr>
-          </thead>
-          <tbody id="sessions-body"></tbody>
-        </table>
-      </div>
+      <h2>Type A vs Type B</h2>
+      <p class="subtitle">CTR and average viewing time — difference column shows Type B minus Type A.</p>
+      <div id="comparison-table"></div>
     </div>
 
     <div class="admin-card">
-      <h3>Section dwell averages (seconds)</h3>
-      <div id="dwell-chart"></div>
+      <details class="raw-logs">
+        <summary>Raw session logs (<span id="session-count">0</span>)</summary>
+        <div style="overflow-x:auto; margin-top: 8px;">
+          <table class="raw-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Variant</th>
+                <th>Duration</th>
+                <th>CTAs clicked</th>
+              </tr>
+            </thead>
+            <tbody id="sessions-body"></tbody>
+          </table>
+        </div>
+      </details>
     </div>
   </div>
 
