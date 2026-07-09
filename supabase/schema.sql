@@ -86,8 +86,8 @@ begin
     values (archive_name, cnt, snapshot);
   end if;
 
-  delete from public.events;
-  delete from public.sessions;
+  delete from public.events where true;
+  delete from public.sessions where true;
 
   return jsonb_build_object(
     'archived_count', cnt,
