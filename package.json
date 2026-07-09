@@ -4,7 +4,6 @@
   "version": "1.0.0",
   "description": "SOL LINK A/B test pilot prototype",
   "scripts": {
-    "build": "node scripts/build-config.mjs",
     "dev": "python3 -m http.server 8080"
   }
 }
