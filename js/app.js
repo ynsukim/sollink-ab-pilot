@@ -109,10 +109,12 @@
         ? `<ul class="footnotes">${section.footnotes.map((f) => `<li>${f}</li>`).join('')}</ul>`
         : '';
       return `
-        <section class="section section-product-card" data-section="${section.id}">
+        <section class="section section-product-card ${section.bg}" data-section="${section.id}">
           <div class="product-card">
-            ${img(section.imgHeader, 'Product header')}
-            ${img(section.imgBody, 'Product body')}
+            <div class="section-stack section-stack--gap-md">
+              ${img(section.imgHeader, 'Product header')}
+              ${img(section.imgBody, 'Product body')}
+            </div>
             ${renderCtas(section.ctas)}
             ${section.badge ? `<p class="badge-text">${section.badge}</p>` : ''}
           </div>
@@ -123,42 +125,42 @@
     if (section.imgTitle) {
       return `
         <section class="section section-benefit ${section.bg}" data-section="${section.id}">
-          ${img(section.imgTitle, 'Benefit title')}
-          ${img(section.imgCard01, 'Card 1')}
-          ${img(section.imgCard02, 'Card 2')}
-          ${renderCtas(section.ctas)}
-          ${section.imgInfo ? img(section.imgInfo, 'Info') : ''}
+          <div class="section-stack section-stack--gap-xl">
+            ${img(section.imgTitle, 'Benefit title')}
+            <div class="section-stack section-stack--gap-md section-stack--inset">
+              ${img(section.imgCard01, 'Card 1')}
+              ${img(section.imgCard02, 'Card 2')}
+            </div>
+            <div class="section-stack section-stack--gap-xl section-stack--inset">
+              ${renderCtas(section.ctas)}
+              ${section.imgInfo ? img(section.imgInfo, 'Info') : ''}
+            </div>
+          </div>
         </section>`;
     }
 
     if (section.imgCard && !section.imgBody) {
       return `
         <section class="section section-benefit2 ${section.bg}" data-section="${section.id}">
-          ${img(section.imgHeader, 'Header')}
-          ${img(section.imgCard, 'Card')}
-          ${renderCtas(section.ctas)}
+          <div class="section-stack section-stack--gap-xl section-stack--inset">
+            ${img(section.imgHeader, 'Header')}
+            ${img(section.imgCard, 'Card')}
+            ${renderCtas(section.ctas)}
+          </div>
         </section>`;
     }
 
     return `
       <section class="section section-product ${section.bg}" data-section="${section.id}">
-        ${img(section.imgHeader, 'Header')}
-        ${img(section.imgBody, 'Body')}
+        <div class="section-stack section-stack--gap-lg section-stack--inset">
+          ${img(section.imgHeader, 'Header')}
+          ${img(section.imgBody, 'Body')}
+        </div>
         ${renderCtas(section.ctas)}
       </section>`;
   }
 
-  function init() {
-    const tracker = new window.SollinkAnalytics.SessionTracker();
-    const variant = tracker.variant;
-    const sections = SECTIONS[variant];
-
-    document.body.dataset.variant = variant;
-    document.getElementById('variant-badge').textContent = `Type ${variant}`;
-
-    const main = document.getElementById('main-content');
-    main.innerHTML = sections.map(renderSection).join('');
-
+  function bindCtas(main, tracker) {
     main.querySelectorAll('[data-cta-id]').forEach((btn) => {
       btn.addEventListener('click', () => {
         tracker.trackCta(btn.dataset.ctaId, btn.dataset.ctaLabel);
@@ -166,7 +168,47 @@
         setTimeout(() => btn.classList.remove('clicked'), 300);
       });
     });
+  }
 
+  function renderMain(variant, tracker) {
+    const main = document.getElementById('main-content');
+    main.innerHTML = SECTIONS[variant].map(renderSection).join('');
+    bindCtas(main, tracker);
+    tracker.resetSections();
+  }
+
+  function switchVariant(tracker) {
+    const other = tracker.variant === 'A' ? 'B' : 'A';
+    tracker.trackEvent('variant_switch', { from: tracker.variant, to: other });
+    window.SollinkAnalytics.setVariant(other);
+
+    const url = new URL(window.location.href);
+    url.searchParams.set('variant', other);
+    history.replaceState({}, '', url);
+
+    tracker.variant = other;
+    document.body.dataset.variant = other;
+    renderMain(other, tracker);
+    window.scrollTo(0, 0);
+  }
+
+  function setupHeaderActions(tracker) {
+    document.getElementById('btn-version-info')?.addEventListener('click', () => {
+      alert(`현재 버전: Type ${tracker.variant}`);
+    });
+
+    document.getElementById('btn-switch-version')?.addEventListener('click', () => {
+      switchVariant(tracker);
+    });
+  }
+
+  function init() {
+    const tracker = new window.SollinkAnalytics.SessionTracker();
+    const variant = tracker.variant;
+
+    document.body.dataset.variant = variant;
+    renderMain(variant, tracker);
+    setupHeaderActions(tracker);
     tracker.init();
 
     const endBtn = document.getElementById('end-session');

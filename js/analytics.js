@@ -207,6 +207,13 @@
       };
     }
 
+    resetSections() {
+      if (this.observer) this.observer.disconnect();
+      this.sectionEnterTimes = {};
+      this.setupSectionObserver();
+      this.maxScrollDepth = 0;
+    }
+
     async flush(useBeacon) {
       if (!this.active) return;
       this.active = false;
@@ -215,17 +222,15 @@
       const body = JSON.stringify(payload);
 
       const { supabaseUrl, supabaseAnonKey } = getConfig();
-      if (supabaseUrl && supabaseAnonKey && useBeacon && navigator.sendBeacon) {
-        const blob = new Blob([body], { type: 'application/json' });
-        const headers = new Headers({
-          apikey: supabaseAnonKey,
-          Authorization: `Bearer ${supabaseAnonKey}`,
-          'Content-Type': 'application/json',
-          Prefer: 'return=minimal',
-        });
+      if (supabaseUrl && supabaseAnonKey && useBeacon) {
         fetch(`${supabaseUrl}/rest/v1/sessions`, {
           method: 'POST',
-          headers,
+          headers: {
+            apikey: supabaseAnonKey,
+            Authorization: `Bearer ${supabaseAnonKey}`,
+            'Content-Type': 'application/json',
+            Prefer: 'return=minimal',
+          },
           body,
           keepalive: true,
         }).catch(() => queueEvent(payload));
@@ -235,9 +240,14 @@
     }
   }
 
+  function setVariant(variant) {
+    sessionStorage.setItem(STORAGE_KEY, variant);
+  }
+
   window.SollinkAnalytics = {
     SessionTracker,
     getVariant,
+    setVariant,
     getQueuedSessions() {
       return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
     },

@@ -1,36 +1,8 @@
 (function () {
-  const loginView = document.getElementById('login-view');
-  const dashboardView = document.getElementById('dashboard-view');
   let sessions = [];
 
-  function getConfig() {
-    return window.SOLLINK_CONFIG || {};
-  }
-
-  function checkAuth() {
-    return sessionStorage.getItem('sollink_admin') === '1';
-  }
-
-  function showDashboard() {
-    loginView.classList.add('hidden');
-    dashboardView.classList.remove('hidden');
-    loadData();
-  }
-
-  document.getElementById('login-btn').addEventListener('click', () => {
-    const pwd = document.getElementById('password-input').value;
-    if (pwd === getConfig().adminPassword) {
-      sessionStorage.setItem('sollink_admin', '1');
-      showDashboard();
-    } else {
-      alert('Wrong password');
-    }
-  });
-
-  if (checkAuth()) showDashboard();
-
   async function fetchSessions() {
-    const { supabaseUrl, supabaseAnonKey } = getConfig();
+    const { supabaseUrl, supabaseAnonKey } = window.SOLLINK_CONFIG || {};
     const localQueue = window.SollinkAnalytics.getQueuedSessions();
 
     if (!supabaseUrl || !supabaseAnonKey) {
@@ -64,6 +36,12 @@
     const list = typeof clicks === 'string' ? JSON.parse(clicks) : clicks;
     if (!list?.length) return '-';
     return list.map((c) => c.label || c.id).join(', ');
+  }
+
+  function filterData(data) {
+    const variant = document.getElementById('variant-filter').value;
+    if (!variant) return data;
+    return data.filter((s) => s.variant === variant);
   }
 
   function renderStats(data) {
@@ -135,25 +113,15 @@
       .join('');
   }
 
-  function filterData(data) {
-    const variant = document.getElementById('variant-filter').value;
-    if (!variant) return data;
-    return data.filter((s) => s.variant === variant);
-  }
-
   async function loadData() {
     try {
       sessions = await fetchSessions();
-      renderStats(sessions);
-      renderTable(sessions);
-      renderDwellChart(sessions);
     } catch (err) {
-      alert('Could not load data. Check Supabase config or use local queue.');
       sessions = window.SollinkAnalytics.getQueuedSessions();
-      renderStats(sessions);
-      renderTable(sessions);
-      renderDwellChart(sessions);
     }
+    renderStats(sessions);
+    renderTable(sessions);
+    renderDwellChart(sessions);
   }
 
   document.getElementById('refresh-btn').addEventListener('click', loadData);
@@ -182,4 +150,6 @@
     a.download = `sollink-ab-${Date.now()}.csv`;
     a.click();
   });
+
+  loadData();
 })();

@@ -13,10 +13,27 @@
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <header class="app-header">
-    <button type="button" id="back-btn" class="icon-btn" aria-label="뒤로가기">←</button>
-    <h1>이벤트</h1>
-    <span id="variant-badge" class="variant-badge"></span>
+  <div class="mobile-shell">
+  <header class="figma-top-nav">
+    <div class="top-nav-inner">
+      <nav class="top-nav-bar" aria-label="이벤트">
+        <button type="button" id="back-btn" class="top-nav-back-btn" aria-label="뒤로가기">
+          <img src="assets/shared/icon-back.png" alt="" class="top-nav-back-icon">
+          <span class="top-nav-title" lang="ko">이벤트</span>
+        </button>
+        <div class="top-nav-right">
+          <button type="button" id="btn-version-info" class="top-nav-icon-btn" aria-label="버전 확인">
+            <img src="assets/shared/icon-share.png" alt="">
+          </button>
+          <button type="button" id="btn-switch-version" class="top-nav-icon-btn" aria-label="버전 전환">
+            <img src="assets/shared/icon-chat.png" alt="">
+          </button>
+          <a href="admin.html" id="btn-admin" class="top-nav-icon-btn" aria-label="관리자">
+            <img src="assets/shared/icon-home.png" alt="">
+          </a>
+        </div>
+      </nav>
+    </div>
   </header>
 
   <main id="main-content"></main>
@@ -24,6 +41,7 @@
   <div id="install-banner" class="install-banner hidden">
     <p>전체 화면으로 사용하려면 홈 화면에 추가하세요</p>
     <button type="button" id="dismiss-install">닫기</button>
+  </div>
   </div>
 
   <script src="js/config.js"></script>
