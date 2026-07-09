@@ -1,9 +1,0 @@
-{
-  "name": "sollink-ab-pilot",
-  "private": true,
-  "version": "1.0.0",
-  "description": "SOL LINK A/B test pilot prototype",
-  "scripts": {
-    "dev": "python3 -m http.server 8080"
-  }
-}
