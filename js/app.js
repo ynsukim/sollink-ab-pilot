@@ -51,7 +51,7 @@
           '만 19세 이상 개인 및 내국인',
           "'26.06.16(포함) 이후 개설한 나라사랑 S-Lite 보유고객 포함",
         ],
-        badge: '30초면 가입 완료!',
+        badgeImage: 'assets/b/cta-bubble.png',
         bg: 'blue-card',
       },
       {
@@ -115,8 +115,10 @@
               ${img(section.imgHeader, 'Product header')}
               ${img(section.imgBody, 'Product body')}
             </div>
-            ${renderCtas(section.ctas)}
-            ${section.badge ? `<p class="badge-text">${section.badge}</p>` : ''}
+            <div class="cta-block">
+              ${section.badgeImage ? `<img src="${section.badgeImage}" alt="" class="cta-bubble">` : ''}
+              ${renderCtas(section.ctas)}
+            </div>
           </div>
           ${footnotes}
         </section>`;

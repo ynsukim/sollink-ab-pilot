@@ -1,4 +1,4 @@
-const CACHE = 'sollink-ab-v4';
+const CACHE = 'sollink-ab-v10';
 const ASSETS = ['./', './index.html', './css/styles.css', './js/config.js', './js/analytics.js', './js/app.js', './manifest.json'];
 
 self.addEventListener('install', (event) => {

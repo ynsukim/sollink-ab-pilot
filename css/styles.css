@@ -17,7 +17,13 @@
   --space-192: calc(var(--layout-w) * 192 / 1500);
   --space-224: calc(var(--layout-w) * 224 / 1500);
   --pad-x: calc(var(--layout-w) * 80 / 1500);
+  --card-margin-x: calc(var(--layout-w) * 60 / 1500);
+  --card-inset-x: calc(var(--layout-w) * 80 / 1500);
   --radius-card: calc(var(--layout-w) * 132 / 1500);
+  /* Figma BoxButton xlarge: 1340×224 (1220×224 inside Type B card) */
+  --cta-h: calc(var(--layout-w) * 224 / 1500);
+  --cta-radius: calc(var(--layout-w) * 66 / 1500);
+  --bubble-gap: calc(var(--layout-w) * 25 / 1500);
 }
 
 html,
@@ -192,7 +198,7 @@ body {
 
 .section-benefit2.navy {
   background: linear-gradient(180deg, #001137 0%, #17326d 100%);
-  padding: var(--space-192) var(--pad-x);
+  padding: var(--space-192) 0;
 }
 
 .section-product.green,
@@ -204,12 +210,17 @@ body {
 .product-card {
   background: linear-gradient(180deg, #fff 0%, #f0f4fa 100%);
   border-radius: var(--radius-card);
-  margin: 0 var(--pad-x);
-  padding: calc(var(--layout-w) * 172 / 1500) calc(var(--layout-w) * 60 / 1500) calc(var(--layout-w) * 172 / 1500);
+  margin: 0 var(--card-margin-x);
+  padding: calc(var(--layout-w) * 172 / 1500) 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: var(--space-96);
+}
+
+.product-card .section-stack {
+  padding: 0 var(--card-inset-x);
+  box-sizing: border-box;
 }
 
 .footnotes {
@@ -229,42 +240,68 @@ body {
   content: '* ';
 }
 
-.badge-text {
-  text-align: center;
-  color: #2571fe;
-  font-weight: 700;
-  font-size: 14px;
-  margin: 0;
-  padding-top: var(--space-40);
+.cta-block {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+}
+
+.cta-bubble {
+  display: block;
+  align-self: center;
+  width: 50%;
+  height: auto;
+  margin: 0 auto var(--bubble-gap);
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
 }
 
 .cta-group {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: var(--space-48);
-  padding: 0 var(--pad-x);
   width: 100%;
   box-sizing: border-box;
 }
 
-.section-product .cta-group,
+/* Full-width sections: 80px page inset → 1340px button */
+.section-product .cta-group {
+  padding: var(--space-96) var(--pad-x) 0;
+}
+
 .section-benefit2 .cta-group {
   padding-top: var(--space-96);
 }
 
-.section-benefit .cta-group {
+.section-benefit .section-stack--inset > .cta-group {
   padding: 0;
+}
+
+/* Type B card: 80px inset inside 1380px card → 1220px button */
+.product-card .cta-block {
+  width: 100%;
+  padding: 0 var(--card-inset-x);
+  box-sizing: border-box;
 }
 
 .cta-btn {
   width: 100%;
   border: none;
-  border-radius: calc(var(--layout-w) * 24 / 1500);
-  padding: calc(var(--layout-w) * 32 / 1500) calc(var(--layout-w) * 40 / 1500);
-  font-size: 16px;
+  border-radius: var(--cta-radius);
+  min-height: var(--cta-h);
+  padding: 0 calc(var(--layout-w) * 48 / 1500);
+  font-size: max(15px, calc(var(--layout-w) * 44 / 1500));
   font-weight: 700;
+  line-height: 1.35;
   cursor: pointer;
   transition: transform 0.15s ease, opacity 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .cta-btn.primary {
